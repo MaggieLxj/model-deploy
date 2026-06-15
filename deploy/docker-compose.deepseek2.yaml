@@ -1,0 +1,51 @@
+services:
+  vllm-deepseek:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-vllm-deepseek
+    container_name: vllm-ds4-server
+    restart: unless-stopped
+    network_mode: host
+    runtime: nvidia
+    ipc: host
+    privileged: true
+    volumes:
+      - ./DeepSeek-V4-Flash:/models:ro  # 挂载模型目录
+
+    environment:
+      - CUDA_VISIBLE_DEVICES=4,5,6,7
+      - NVIDIA_VISIBLE_DEVICES=4,5,6,7  # 多卡时指定      
+      - VLLM_ENGINE_READY_TIMEOUT_S=3600
+
+    command: >
+      /models
+      --trust-remote-code
+      --kv-cache-dtype fp8
+      --block-size 256
+      --port 9996
+      --enable-expert-parallel
+      --tensor-parallel-size 4
+      --data-parallel-size 1
+      --gpu-memory-utilization 0.9
+      --enforce-eager
+      --max-model-len 384000
+      --tokenizer-mode deepseek_v4
+      --tool-call-parser deepseek_v4
+      --enable-auto-tool-choice
+      --served-model-name ds-4-flash
+      --reasoning-parser deepseek_v4
+      --compilation-config '{"cudagraph_mode":"FULL_AND_PIECEWISE", "custom_ops":["all"]}'
+
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: '64gb'
+    ulimits:
+      memlock: -1
+      stack: 67108864

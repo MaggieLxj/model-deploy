@@ -1,0 +1,42 @@
+services:
+  llama-minimax27:
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda
+    container_name: minimax27-llama-server
+    restart: always
+    network_mode: host 
+    environment:
+      - CUDA_VISIBLE_DEVICES=2,3
+      - NVIDIA_VISIBLE_DEVICES=2,3
+    volumes:
+      - ./MiniMax-M2.7-GGUF/UD-IQ4_XS:/model
+      - /dev/shm:/dev/shm
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    command: 
+      - "--server"
+      - "-m"
+      - "/model/MiniMax-M2.7-UD-IQ4_XS-00001-of-00004.gguf"
+      - "--port"
+      - "9996"
+      - "--parallel"
+      - "1"                          
+      - "--n-gpu-layers"
+      - "99" 
+      - "--ctx-size"
+      - "196608"        # 单线程最大196608
+      - "--batch-size"
+      - "1024"
+      - "--threads"
+      - "16"        
+      - "--tensor-split"
+      - "4,4"
+      - "--host"
+      - "0.0.0.0"
+
+

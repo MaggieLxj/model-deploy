@@ -1,0 +1,42 @@
+services:
+  llama-glm5:
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda
+    container_name: glm5-llama-server
+    restart: unless-stopped
+    network_mode: host 
+    environment:
+      - CUDA_VISIBLE_DEVICES=4,5,6,7
+      - NVIDIA_VISIBLE_DEVICES=4,5,6,7
+    volumes:
+      - ./GLM-5.1-GGUF/UD-Q2_K_XL:/model
+      - /dev/shm:/dev/shm
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    command: 
+      - "--server"
+      - "-m"
+      - "/model/GLM-5.1-UD-Q2_K_XL-00001-of-00007.gguf"
+      - "--port"
+      - "9996"
+      - "--parallel"
+      - "2"                          
+      - "--n-gpu-layers"
+      - "99" 
+      - "--ctx-size"
+      - "405504"        # 单线程最大202752
+      - "--batch-size"
+      - "2048"
+      - "--threads"
+      - "32"        
+      - "--tensor-split"
+      - "4,4,4,4"
+      - "--host"
+      - "0.0.0.0"
+
+

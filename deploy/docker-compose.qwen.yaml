@@ -1,0 +1,67 @@
+# Docker Compose - 单独运行 Qwen 3.6 27B 服务
+# 使用方法: docker-compose -f docker-compose.qwen.yaml up -d
+# 停止服务: docker-compose -f docker-compose.qwen.yaml down
+# 查看日志: docker-compose -f docker-compose.qwen.yaml logs -f
+
+services:
+  # --- Service: Qwen 3.6 27B ---
+  qwen36-brain:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    image: vllm/vllm-openai:v0.22.1
+    container_name: qwen36-server
+    restart: always
+    network_mode: host
+
+    # GPU 配置
+    environment:
+      - CUDA_VISIBLE_DEVICES=7  # 使用后 4 块 GPU
+      - HF_HUB_OFFLINE=1          # 禁用 HuggingFace Hub 访问
+
+    # 模型挂载
+    volumes:
+      - ./Qwen3.6-27B:/model          # Qwen 模型文件
+      - /dev/shm:/dev/shm            # 共享内存
+
+    # GPU 设备分配（硬锁定）
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # 启动入口（可选）
+    entrypoint: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+
+    # 启动参数
+    command:
+      - "--model"
+      - "/model"
+      - "--port"
+      - "9993"                   # 独立端口（与 GLM 区分开）
+      - "--tensor-parallel-size"
+      - "1"
+      - "--max-model-len"
+      - "262144"                 # 262K 上下文长度
+      - "--dtype"
+      - "bfloat16"
+      - "--gpu-memory-utilization"
+      - "0.90"                   # Qwen 27B 是密集模型，使用较高利用率
+      - "--kv-cache-dtype"
+      - "fp8"
+      - "--trust-remote-code"
+      - "--enforce-eager"
+      - "--served-model-name"
+      - "qwen-3.6-27b"
+      # - "--distributed-executor-backend"
+      # - "ray"
+      - "--enable-auto-tool-choice"
+      - "--tool-call-parser"
+      - "qwen3_coder"              
+      - "--reasoning-parser"
+      - "qwen3"
+
+    
